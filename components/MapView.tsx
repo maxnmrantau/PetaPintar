@@ -287,9 +287,6 @@ const MapView: React.FC<MapViewProps> = ({ pins, onMapClick, selectedLocation, f
           </div>
         </div>
         {/* 👆 SELESAI FITUR BARU 👆 */}
-
-        <MapEffect location={focusLocation || null} />
-// ... (Kode selanjutnya) ...
         <MapEffect location={focusLocation || null} />
         <LocationMarker 
           onMapClick={(lat, lng) => { handleMapBackgroundClick(); if (onMapClick) onMapClick(lat, lng); }} 
