@@ -46,6 +46,21 @@
         color: #f1f1f1 !important;
         transform: scale(1.1);
       }
+
+      /* Custom Animations */
+      @keyframes fadeInUp {
+        from {
+          opacity: 0;
+          transform: translate3d(0, 20px, 0);
+        }
+        to {
+          opacity: 1;
+          transform: translate3d(0, 0, 0);
+        }
+      }
+      .animate-fade-in-up {
+        animation: fadeInUp 0.3s ease-out forwards;
+      }
     </style>
   <script type="importmap">
 {
@@ -65,16 +80,23 @@
 </head>
   <body class="bg-slate-50 text-slate-900 font-sans antialiased">
     <div id="root"></div>
+
     <script>
-      // ⚠️ PENTING: GANTI NILAI DI BAWAH INI DENGAN KUNCI ASLI DARI SUPABASE ⚠️
-      // Jika tidak diganti, Anda akan melihat pesan peringatan di aplikasi.
+      // =========================================================================
+      // 👇👇👇 GANTI KODE DI BAWAH INI (BARIS INI SAMPAI BAWAH) 👇👇👇
+      // =========================================================================
       
-      // 1. Masukkan Project URL (dari Settings -> API di Supabase)
+      // 1. Hapus 'YOUR_SUPABASE_PROJECT_URL' dan tempel URL dari Supabase Anda
       window.VITE_SUPABASE_URL = 'https://uybaqdhxvfrlferzgawd.supabase.co';
       
-      // 2. Masukkan anon public key (dari Settings -> API di Supabase)
+      // 2. Hapus 'YOUR_SUPABASE_ANON_KEY' dan tempel Anon Public Key dari Supabase Anda
       window.VITE_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV5YmFxZGh4dmZybGZlcnpnYXdkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQxMzk2OTQsImV4cCI6MjA3OTcxNTY5NH0.Sedpi2p6_1DFl6t9GdrpINVHWQhkgddrmuDn045XMEo';
+      
+      // =========================================================================
+      // 👆👆👆 SELESAI PENGEDITAN DI SINI 👆👆👆
+      // =========================================================================
     </script>
+    
     <script type="module" src="./index.tsx"></script>
   </body>
 </html>
