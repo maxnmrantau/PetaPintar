@@ -98,7 +98,7 @@ const LoginPage: React.FC = () => {
           
           <div className="bg-slate-50 px-8 py-4 border-t border-slate-100 text-center">
             <p className="text-xs text-slate-500">
-              Akses terbatas hanya untuk administrator PetaPintar.
+              Akses terbatas hanya untuk administrator PetaPintar - AGENT03 RANTAU.
             </p>
           </div>
         </div>
