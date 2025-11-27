@@ -5,6 +5,7 @@ import { generatePlaceDescription } from '../services/geminiService';
 import { PinLocation, LocationCategory, OperationStatus, LocationReport } from '../types';
 import { CATEGORY_ICONS } from '../constants';
 import { Plus, Trash2, Wand2, MapPin, Save, Loader2, Image as ImageIcon, Phone, Home, LogOut, Upload, X, Crosshair, Edit3, User, Mail, MessageCircle, Clock, FileSpreadsheet, Search, LayoutList, Map as MapIcon, Download, Inbox, Check, GitMerge, AlertCircle, Eye } from 'lucide-react';
+import ConfirmationModal from '../components/ConfirmationModal';
 
 interface AdminDashboardProps {
   onLogout: () => void;
@@ -112,6 +113,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const [isSaving, setIsSaving] = useState(false);
   const [tableSearch, setTableSearch] = useState('');
   const [isReportsModalOpen, setIsReportsModalOpen] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const csvInputRef = useRef<HTMLInputElement>(null);
@@ -339,14 +341,25 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     }
   };
 
-  const handleLogoutConfirm = () => {
-    if (window.confirm("⚠️ KONFIRMASI KELUAR\n\nApakah Anda yakin ingin keluar?\n\nPastikan data telah disimpan.")) onLogout();
+  const confirmLogout = () => {
+    onLogout();
   };
 
   const tablePins = pins.filter(p => p.name.toLowerCase().includes(tableSearch.toLowerCase()) || p.address?.toLowerCase().includes(tableSearch.toLowerCase()) || p.category.toLowerCase().includes(tableSearch.toLowerCase()));
 
   return (
     <>
+      <ConfirmationModal
+        isOpen={showLogoutModal}
+        onClose={() => setShowLogoutModal(false)}
+        onConfirm={confirmLogout}
+        title="Konfirmasi Keluar"
+        message="Apakah Anda yakin ingin keluar? Pastikan seluruh data telah disimpan sebelum melanjutkan."
+        type="logout"
+        confirmText="Ya, Keluar"
+        cancelText="Batal"
+      />
+
       {isReportsModalOpen && <ReportsModal reports={reports} pins={pins} onVerify={handleVerifyReport} onClose={() => setIsReportsModalOpen(false)} />}
       <div className="flex flex-col md:flex-row h-[calc(100vh-64px)] bg-slate-100 overflow-hidden">
         <div className="w-full md:w-[420px] flex flex-col bg-white h-full border-r border-slate-200 z-20 shadow-xl">
@@ -362,7 +375,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                     <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center border-2 border-white">{reports.length}</span>
                   )}
                 </button>
-                <button onClick={handleLogoutConfirm} className="text-xs flex items-center gap-1 px-3 py-1.5 bg-slate-50 text-slate-500 rounded-lg hover:bg-slate-100 hover:text-red-600 transition-colors font-medium">
+                <button onClick={() => setShowLogoutModal(true)} className="text-xs flex items-center gap-1 px-3 py-1.5 bg-slate-50 text-slate-500 rounded-lg hover:bg-slate-100 hover:text-red-600 transition-colors font-medium">
                   <LogOut className="w-3.5 h-3.5" /> Keluar
                 </button>
               </div>
