@@ -58,8 +58,7 @@
     "react-leaflet": "https://aistudiocdn.com/react-leaflet@^5.0.0",
     "leaflet": "https://aistudiocdn.com/leaflet@^1.9.4",
     "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
-    "supabase/supabase-js": "https://aistudiocdn.com/@supabase/supabase-js@^2.43.4",
-    "supabase/": "https://aistudiocdn.com/supabase@^2.62.5/"
+    "@supabase/supabase-js": "https://aistudiocdn.com/@supabase/supabase-js@^2.43.4"
   }
 }
 </script>
@@ -67,12 +66,14 @@
   <body class="bg-slate-50 text-slate-900 font-sans antialiased">
     <div id="root"></div>
     <script>
-      // Define global variables for Supabase keys
-      // IMPORTANT: Replace 'YOUR_SUPABASE_PROJECT_URL' and 'YOUR_SUPABASE_ANON_KEY'
-      // with your actual Supabase project URL and anon public key.
-      // These will be read by lib/supabaseClient.ts
-      window.VITE_SUPABASE_URL = 'https://uybaqdhxvfrlferzgawd.supabase.co';
-      window.VITE_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV5YmFxZGh4dmZybGZlcnpnYXdkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQxMzk2OTQsImV4cCI6MjA3OTcxNTY5NH0.Sedpi2p6_1DFl6t9GdrpINVHWQhkgddrmuDn045XMEo';
+      // ⚠️ PENTING: GANTI NILAI DI BAWAH INI DENGAN KUNCI ASLI DARI SUPABASE ⚠️
+      // Jika tidak diganti, Anda akan melihat pesan peringatan di aplikasi.
+      
+      // 1. Masukkan Project URL (dari Settings -> API di Supabase)
+      window.VITE_SUPABASE_URL = 'YOUR_SUPABASE_PROJECT_URL';
+      
+      // 2. Masukkan anon public key (dari Settings -> API di Supabase)
+      window.VITE_SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
     </script>
   </body>
 </html>
