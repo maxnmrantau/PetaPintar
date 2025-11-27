@@ -305,7 +305,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     setPinToDelete(null);
   };
 
-  const confirmLogout = () => onLogout();
+  const confirmLogout = () => {
+    onLogout(); // This will trigger supabase.auth.signOut() in App.tsx
+  }
 
   const tablePins = pins.filter(p => p.name.toLowerCase().includes(tableSearch.toLowerCase()) || p.address?.toLowerCase().includes(tableSearch.toLowerCase()) || p.category.toLowerCase().includes(tableSearch.toLowerCase()));
 
