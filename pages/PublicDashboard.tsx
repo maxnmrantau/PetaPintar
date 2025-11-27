@@ -1,9 +1,10 @@
+
 import React, { useEffect, useState } from 'react';
 import MapView from '../components/MapView';
 import { getPins } from '../services/storageService'; // Now an async function
 import { PinLocation, LocationCategory } from '../types';
 import { CATEGORY_COLORS, CATEGORY_ICONS } from '../constants';
-import { Search, Filter, MapPin, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { Search, Filter, MapPin, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, PanelLeftClose, PanelLeftOpen, List } from 'lucide-react';
 
 const PublicDashboard: React.FC = () => {
   const [pins, setPins] = useState<PinLocation[]>([]);
@@ -58,7 +59,7 @@ const PublicDashboard: React.FC = () => {
           order-2 md:order-1
           ${isSidebarOpen 
             ? 'w-full md:w-96 h-[45%] md:h-full' 
-            : 'w-full md:w-0 h-14 md:h-full overflow-hidden'
+            : 'w-full md:w-0 h-0 md:h-full overflow-hidden'
           }
         `}
       >
@@ -155,6 +156,7 @@ const PublicDashboard: React.FC = () => {
       </div>
       
       <div className="flex-1 h-full order-1 md:order-2 relative transition-all duration-300">
+         {/* DESKTOP TOGGLE BUTTON */}
          {!isSidebarOpen && (
             <div className="absolute top-4 left-4 z-[400] hidden md:block">
                <button 
@@ -167,6 +169,20 @@ const PublicDashboard: React.FC = () => {
                </button>
             </div>
          )}
+         
+         {/* MOBILE TOGGLE BUTTON (New Fix) */}
+         {!isSidebarOpen && (
+            <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-[400] md:hidden">
+               <button 
+                  onClick={() => setIsSidebarOpen(true)}
+                  className="bg-indigo-600 text-white px-5 py-3 rounded-full shadow-xl flex items-center gap-2 transition-all active:scale-95 animate-fade-in-up"
+               >
+                  <List className="w-5 h-5" />
+                  <span className="text-sm font-bold">Lihat Daftar</span>
+               </button>
+            </div>
+         )}
+
          <MapView 
             pins={filteredPins} 
             interactive={false} 
