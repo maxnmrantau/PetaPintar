@@ -278,11 +278,6 @@ const MapView: React.FC<MapViewProps> = ({ pins, onMapClick, selectedLocation, f
         <AttributionControl position="bottomleft" prefix={false} />
         <ZoomControl position="bottomright" />
         <TileLayer url={TILE_LAYER_URL} />
-        // ... (Kode sebelumnya) ...
-        <AttributionControl position="bottomleft" prefix={false} />
-        <ZoomControl position="bottomright" />
-        <TileLayer url={TILE_LAYER_URL} />
-        
         {/* 👇 FITUR BARU: Credit Badge - TIM NM RANTAU 👇 */}
         <div className="absolute bottom-8 left-2 z-[400] pointer-events-none select-none">
           <div className="bg-white/70 backdrop-blur-[2px] border border-slate-200/50 px-2.5 py-1 rounded-lg shadow-sm transition-opacity hover:opacity-100 opacity-80">
