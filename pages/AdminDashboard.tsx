@@ -6,6 +6,7 @@ import { PinLocation, LocationCategory, OperationStatus, LocationReport } from '
 import { CATEGORY_ICONS } from '../constants';
 import { Plus, Trash2, Wand2, MapPin, Save, Loader2, Image as ImageIcon, Phone, Home, LogOut, Upload, X, Crosshair, Edit3, User, Mail, MessageCircle, Clock, FileSpreadsheet, Search, LayoutList, Map as MapIcon, Download, Inbox, Check, GitMerge, AlertCircle, Eye } from 'lucide-react';
 import ConfirmationModal from '../components/ConfirmationModal';
+import NotificationToast from '../components/NotificationToast'; // Import toast component
 
 interface AdminDashboardProps {
   onLogout: () => void;
@@ -114,9 +115,18 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const [tableSearch, setTableSearch] = useState('');
   const [isReportsModalOpen, setIsReportsModalOpen] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+
+  // New state for notifications
+  const [notification, setNotification] = useState({ show: false, message: '', type: 'success' as 'success' | 'error' });
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [pinToDelete, setPinToDelete] = useState<string | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const csvInputRef = useRef<HTMLInputElement>(null);
+
+  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+    setNotification({ show: true, message, type });
+  };
 
   const refreshData = async () => {
       setPins(await getPins());
@@ -132,15 +142,17 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         const originalPin = pins.find(p => p.id === report.pinId);
         if (originalPin) {
             const updatedPin = { ...originalPin, ...report.changes };
-            await updatePin(updatedPin); // Await async update
+            await updatePin(updatedPin);
+            showToast('Laporan diterima dan data telah diperbarui.');
             if (action === 'approve_and_edit') {
-                handleEdit(updatedPin); // Load into form for further editing
-                setIsReportsModalOpen(false); // Close reports modal
+                handleEdit(updatedPin);
+                setIsReportsModalOpen(false);
             }
         }
     }
-    await deleteReport(report.reportId); // Await async delete
-    refreshData(); // Refresh all data
+    await deleteReport(report.reportId);
+    if(action === 'reject') showToast('Laporan ditolak dan telah dihapus.', 'error');
+    refreshData();
   };
 
   const handleMapClick = (lat: number, lng: number) => {
@@ -160,23 +172,27 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   };
 
   const handleGenerateDescription = async () => {
-    if (!name) { alert("Mohon isi nama tempat terlebih dahulu."); return; }
+    if (!name) { showToast("Mohon isi nama tempat terlebih dahulu.", "error"); return; }
     setIsGenerating(true);
     try {
       const generated = await generatePlaceDescription(name, category);
       setDescription(generated);
-    } catch (e) { alert("Gagal menggunakan AI. Coba lagi."); }
+      showToast("Deskripsi berhasil dibuat oleh AI.");
+    } catch (e) { showToast("Gagal menggunakan AI. Coba lagi.", "error"); }
     finally { setIsGenerating(false); }
   };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => { // Made async
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 1024 * 1024) { alert("Ukuran file terlalu besar. Maksimal 1MB."); return; }
+      if (file.size > 1024 * 1024) { showToast("Ukuran file terlalu besar. Maksimal 1MB.", "error"); return; }
       
-      const uploadedUrl = await uploadImage(file); // Await upload
+      const uploadedUrl = await uploadImage(file);
       if (uploadedUrl) {
         setImageUrl(uploadedUrl);
+        showToast("Gambar berhasil diunggah.");
+      } else {
+        showToast("Gagal mengunggah gambar.", "error");
       }
     }
   };
@@ -184,21 +200,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const handleExportCSV = () => {
     const headers = ["id", "name", "category", "lat", "lng", "description", "address", "phone", "ownerName", "email", "whatsapp", "operatingHours", "status", "createdAt", "imageUrl"];
     const rows = pins.map(pin => [
-        `"${pin.id}"`, 
-        `"${pin.name.replace(/"/g, '""')}"`, 
-        pin.category, 
-        pin.lat, 
-        pin.lng, 
-        `"${(pin.description || '').replace(/"/g, '""')}"`, 
-        `"${(pin.address || '').replace(/"/g, '""')}"`,
-        `"${(pin.phone || '').replace(/"/g, '""')}"`,
-        `"${(pin.ownerName || '').replace(/"/g, '""')}"`,
-        `"${(pin.email || '').replace(/"/g, '""')}"`,
-        `"${(pin.whatsapp || '').replace(/"/g, '""')}"`,
-        `"${(pin.operatingHours || '').replace(/"/g, '""')}"`,
-        pin.status,
-        pin.createdAt,
-        `"${(pin.imageUrl || '').replace(/"/g, '""')}"`
+        `"${pin.id}"`, `"${pin.name.replace(/"/g, '""')}"`, pin.category, pin.lat, pin.lng, `"${(pin.description || '').replace(/"/g, '""')}"`, `"${(pin.address || '').replace(/"/g, '""')}"`, `"${(pin.phone || '').replace(/"/g, '""')}"`, `"${(pin.ownerName || '').replace(/"/g, '""')}"`, `"${(pin.email || '').replace(/"/g, '""')}"`, `"${(pin.whatsapp || '').replace(/"/g, '""')}"`, `"${(pin.operatingHours || '').replace(/"/g, '""')}"`, pin.status, pin.createdAt, `"${(pin.imageUrl || '').replace(/"/g, '""')}"`
     ]);
     const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
     const blob = new Blob(["\ufeff" + csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -211,14 +213,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     document.body.removeChild(link);
   };
 
-  const handleCSVImport = async (e: React.ChangeEvent<HTMLInputElement>) => { // Made async
+  const handleCSVImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]; if (!file) return;
     const reader = new FileReader();
-    reader.onload = async (event) => { // Made async
+    reader.onload = async (event) => {
       const text = event.target?.result as string; if (!text) return;
       try {
         const rows = text.split('\n');
-        const headers = rows[0].split(',').map(h => h.trim().replace(/^"|"$/g, '')); // Read headers from first row
+        const headers = rows[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
         const newPins: PinLocation[] = []; let successCount = 0;
 
         for (let i = 1; i < rows.length; i++) {
@@ -231,50 +233,21 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
              headers.forEach((header, index) => {
                 const value = cols[index];
                 if (value) {
-                    if (['lat', 'lng'].includes(header)) {
-                        (pinData as any)[header] = parseFloat(value);
-                    } else if (header === 'category') {
-                         if (Object.values(LocationCategory).includes(value as LocationCategory)) {
-                             pinData.category = value as LocationCategory;
-                         } else {
-                             pinData.category = LocationCategory.DROP_POINT; // Default if invalid
-                         }
-                    } else if (header === 'status') {
-                        pinData.status = value as OperationStatus;
-                    } else if (header === 'createdAt') {
-                        pinData.createdAt = value;
-                    } else {
-                        (pinData as any)[header] = value;
-                    }
+                    if (['lat', 'lng'].includes(header)) (pinData as any)[header] = parseFloat(value);
+                    else if (header === 'category') pinData.category = Object.values(LocationCategory).includes(value as LocationCategory) ? value as LocationCategory : LocationCategory.DROP_POINT;
+                    else (pinData as any)[header] = value;
                 }
              });
 
-            // Ensure mandatory fields exist and are valid numbers for lat/lng
             if (pinData.name && !isNaN(pinData.lat!) && !isNaN(pinData.lng!)) {
-                newPins.push({ 
-                    id: pinData.id || Date.now().toString() + Math.random().toString(36).substr(2, 9),
-                    name: pinData.name,
-                    category: pinData.category || LocationCategory.DROP_POINT,
-                    lat: pinData.lat!,
-                    lng: pinData.lng!,
-                    description: pinData.description || '',
-                    address: pinData.address || '',
-                    phone: pinData.phone || '',
-                    ownerName: pinData.ownerName || '',
-                    email: pinData.email || '',
-                    whatsapp: pinData.whatsapp || '',
-                    operatingHours: pinData.operatingHours || '',
-                    status: pinData.status || 'Buka',
-                    createdAt: pinData.createdAt || new Date().toISOString(),
-                    imageUrl: pinData.imageUrl || undefined
-                });
+                newPins.push({ id: pinData.id || Date.now().toString() + Math.random().toString(36).substr(2, 9), name: pinData.name, category: pinData.category || LocationCategory.DROP_POINT, lat: pinData.lat!, lng: pinData.lng!, description: pinData.description || '', address: pinData.address || '', phone: pinData.phone || '', ownerName: pinData.ownerName || '', email: pinData.email || '', whatsapp: pinData.whatsapp || '', operatingHours: pinData.operatingHours || '', status: pinData.status || 'Buka', createdAt: pinData.createdAt || new Date().toISOString(), imageUrl: pinData.imageUrl || undefined });
                 successCount++;
             }
           }
         }
-        if (newPins.length > 0) { await importPins(newPins); await refreshData(); alert(`Berhasil mengimpor ${successCount} lokasi baru!`); } // Await async import and refresh
-        else { alert("Tidak ada data valid yang ditemukan dalam file CSV."); }
-      } catch (err) { console.error(err); alert("Gagal membaca file CSV. Pastikan formatnya benar."); }
+        if (newPins.length > 0) { await importPins(newPins); await refreshData(); showToast(`Berhasil mengimpor ${successCount} lokasi baru!`); }
+        else { showToast("Tidak ada data valid yang ditemukan.", "error"); }
+      } catch (err) { console.error(err); showToast("Gagal membaca file CSV.", "error"); }
       if (csvInputRef.current) csvInputRef.current.value = '';
     };
     reader.readAsText(file);
@@ -291,12 +264,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     setEditingId(null); setEditingCreatedAt(null); setName(''); setDescription(''); setAddress(''); setImageUrl(''); setPhone(''); setOwnerName(''); setWhatsapp(''); setEmail(''); setOperatingHours(''); setStatus('Buka'); setSelectedCoord(null); setLatInput(''); setLngInput(''); setCategory(LocationCategory.DROP_POINT); if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const handleSubmit = async (e: React.FormEvent) => { // Made async
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const errors: string[] = [];
     if (!name.trim()) errors.push("• Nama tempat wajib diisi");
     const latNum = parseFloat(latInput); const lngNum = parseFloat(lngInput);
-    if (!latInput || !lngInput) errors.push("• Koordinat wajib diisi. Klik peta atau isi manual.");
+    if (!latInput || !lngInput) errors.push("• Koordinat wajib diisi.");
     else if (isNaN(latNum) || isNaN(lngNum)) errors.push("• Format koordinat salah.");
     else {
       if (latNum < -90 || latNum > 90) errors.push("• Latitude tidak valid.");
@@ -304,51 +277,47 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     }
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.push("• Format email tidak valid.");
     if (!description.trim()) errors.push("• Deskripsi wajib diisi.");
-    if (errors.length > 0) { alert("Mohon perbaiki kesalahan:\n" + errors.join("\n")); return; }
+    if (errors.length > 0) { showToast("Mohon perbaiki kesalahan:\n" + errors.join("\n"), "error"); return; }
     setIsSaving(true);
 
-    const pinData: PinLocation = { 
-        id: editingId || Date.now().toString(), 
-        name: name.trim(), 
-        category, 
-        description: description.trim(), 
-        address: address.trim(), 
-        phone: phone.trim(), 
-        ownerName: ownerName.trim(), 
-        whatsapp: whatsapp.trim(), 
-        email: email.trim(), 
-        imageUrl: imageUrl.trim() || undefined, // undefined if empty string
-        operatingHours: operatingHours.trim(), 
-        status, 
-        lat: latNum, 
-        lng: lngNum, 
-        createdAt: editingCreatedAt || new Date().toISOString() // Use ISO string
-    };
+    const pinData: PinLocation = { id: editingId || Date.now().toString(), name: name.trim(), category, description: description.trim(), address: address.trim(), phone: phone.trim(), ownerName: ownerName.trim(), whatsapp: whatsapp.trim(), email: email.trim(), imageUrl: imageUrl.trim() || undefined, operatingHours: operatingHours.trim(), status, lat: latNum, lng: lngNum, createdAt: editingCreatedAt || new Date().toISOString() };
     try {
-      if (editingId) { await updatePin(pinData); alert("Lokasi berhasil diperbarui!"); } // Await async update
-      else { await addPin(pinData); alert("Lokasi berhasil ditambahkan!"); } // Await async add
-      await refreshData(); // Refresh all data
+      if (editingId) { await updatePin(pinData); showToast("Lokasi berhasil diperbarui!"); }
+      else { await addPin(pinData); showToast("Lokasi berhasil ditambahkan!"); }
+      await refreshData();
       resetForm();
-    } catch (error) { console.error("Save error:", error); alert("Terjadi kesalahan saat menyimpan data."); }
+    } catch (error) { console.error("Save error:", error); showToast("Terjadi kesalahan saat menyimpan data.", "error"); }
     finally { setIsSaving(false); }
   };
 
-  const handleDelete = async (id: string) => { // Made async
-    if (window.confirm("Hapus lokasi ini permanen?")) { 
-        await deletePin(id); // Await async delete
-        await refreshData(); // Refresh all data
-        if (editingId === id) resetForm(); 
+  const handleDelete = (id: string) => {
+    setPinToDelete(id);
+    setShowDeleteModal(true);
+  };
+  
+  const confirmDelete = async () => {
+    if(pinToDelete){
+        await deletePin(pinToDelete);
+        await refreshData();
+        showToast("Lokasi berhasil dihapus.");
+        if (editingId === pinToDelete) resetForm();
     }
+    setPinToDelete(null);
   };
 
-  const confirmLogout = () => {
-    onLogout();
-  };
+  const confirmLogout = () => onLogout();
 
   const tablePins = pins.filter(p => p.name.toLowerCase().includes(tableSearch.toLowerCase()) || p.address?.toLowerCase().includes(tableSearch.toLowerCase()) || p.category.toLowerCase().includes(tableSearch.toLowerCase()));
 
   return (
     <>
+      <NotificationToast 
+        show={notification.show}
+        message={notification.message}
+        type={notification.type}
+        onClose={() => setNotification({ ...notification, show: false })}
+      />
+
       <ConfirmationModal
         isOpen={showLogoutModal}
         onClose={() => setShowLogoutModal(false)}
@@ -357,6 +326,17 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         message="Apakah Anda yakin ingin keluar? Pastikan seluruh data telah disimpan sebelum melanjutkan."
         type="logout"
         confirmText="Ya, Keluar"
+        cancelText="Batal"
+      />
+
+      <ConfirmationModal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={confirmDelete}
+        title="Hapus Lokasi"
+        message="Anda yakin ingin menghapus lokasi ini secara permanen? Aksi ini tidak dapat dibatalkan."
+        type="danger"
+        confirmText="Ya, Hapus"
         cancelText="Batal"
       />
 
