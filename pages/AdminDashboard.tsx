@@ -261,33 +261,45 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
             let successCount = 0;
 
             // 👇 FUNGSI BARU: PEMBERSIH KOORDINAT CERDAS 👇
-            const cleanCoordinate = (val: any, type: 'lat' | 'lng'): number => {
-                if (typeof val === 'number') return val;
-                if (!val) return 0;
+             const cleanCoordinate = (val: any, type: 'lat' | 'lng'): number => {
+                // Handle null/undefined
+                if (val === null || val === undefined || val === '') return 0;
 
-                let str = String(val).trim();
-                
-                // 1. Ganti koma jadi titik (jika user pakai format Indo 2,5)
-                str = str.replace(/,/g, '.');
+                let num: number;
 
-                // 2. Cek apakah ada lebih dari satu titik (Kasus: 2.572.531)
-                const parts = str.split('.');
-                if (parts.length > 2) {
-                    // Ambil bagian depan sebagai angka utama, sisanya digabung jadi desimal
-                    // Contoh: 2.572.531 -> "2" . "572531" -> 2.572531
-                    str = parts[0] + '.' + parts.slice(1).join('');
+                // 1. JIKA INPUT SUDAH ANGKA (Misal dari Excel terbaca 2572531)
+                if (typeof val === 'number') {
+                    num = val;
+                } 
+                // 2. JIKA INPUT ADALAH TEXT (Misal "2.572.531" atau "2,57")
+                else {
+                    let str = String(val).trim();
+                    
+                    // Ganti koma jadi titik
+                    str = str.replace(/,/g, '.');
+
+                    // Cek multiple dots (Kasus: 2.572.531)
+                    // Ambil angka sebelum titik pertama sebagai integer, sisanya desimal
+                    const parts = str.split('.');
+                    if (parts.length > 2) {
+                        str = parts[0] + '.' + parts.slice(1).join('');
+                    }
+
+                    // Bersihkan karakter aneh
+                    str = str.replace(/[^0-9.-]/g, '');
+                    num = parseFloat(str);
                 }
 
-                // 3. Hapus karakter selain angka, titik, dan minus
-                str = str.replace(/[^0-9.-]/g, '');
-
-                let num = parseFloat(str);
                 if (isNaN(num)) return 0;
 
-                // 4. Heuristik Normalisasi (Safety Net)
-                // Jika angkanya masih integer besar (misal: 2572531 tanpa titik),
-                // bagi 10 terus sampai masuk range wajar GPS (-90/90 atau -180/180)
+                // 3. NORMALISASI MAGNITUDE (PENTING!)
+                // Memastikan koordinat masuk akal (Lat: -90..90, Lng: -180..180)
+                // Jika angkanya 2572531 (2 juta), akan dibagi 10 terus sampai jadi 2.572531
                 const limit = type === 'lat' ? 90 : 180;
+                
+                // Safety: cegah infinite loop jika angka infinity
+                if (!isFinite(num)) return 0;
+
                 while (Math.abs(num) > limit) {
                     num = num / 10;
                 }
