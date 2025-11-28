@@ -5,7 +5,7 @@ import { getPins, addPin, updatePin, deletePin, importPins, getReports, addRepor
 import { generatePlaceDescription } from '../services/geminiService';
 import { PinLocation, LocationCategory, OperationStatus, LocationReport } from '../types';
 import { CATEGORY_ICONS } from '../constants';
-import { Plus, Trash2, Wand2, MapPin, Save, Loader2, Image as ImageIcon, Phone, Home, LogOut, Upload, X, Crosshair, Edit3, User, Briefcase, MessageCircle, Clock, FileSpreadsheet, Search, LayoutList, Map as MapIcon, Download, Inbox, Check, GitMerge, AlertCircle, Eye } from 'lucide-react';
+import { Plus, Trash2, Wand2, MapPin, Save, Loader2, Image as ImageIcon, Phone, Home, LogOut, Upload, X, Crosshair, Edit3, User, Briefcase, MessageCircle, Clock, FileSpreadsheet, Search, LayoutList, Map as MapIcon, Download, Inbox, Check, GitMerge, AlertCircle, Eye, CheckSquare, Square } from 'lucide-react';
 import ConfirmationModal from '../components/ConfirmationModal';
 import NotificationToast from '../components/NotificationToast'; // Import toast component
 
@@ -118,10 +118,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const [isReportsModalOpen, setIsReportsModalOpen] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
-  // New state for notifications
+  // New state for notifications & bulk delete
   const [notification, setNotification] = useState({ show: false, message: '', type: 'success' as 'success' | 'error' });
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [pinToDelete, setPinToDelete] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]); // For bulk selection
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const excelInputRef = useRef<HTMLInputElement>(null);
@@ -133,6 +134,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const refreshData = async () => {
       setPins(await getPins());
       setReports(await getReports());
+      setSelectedIds([]); // Reset selection on refresh
   };
 
   useEffect(() => {
@@ -207,7 +209,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
             return;
         }
 
-        // Siapkan data untuk Excel
         const dataToExport = pins.map(pin => ({
             "Nama Lokasi": pin.name,
             "Kategori": pin.category,
@@ -218,7 +219,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
             "Telepon": pin.phone,
             "Pemilik": pin.ownerName,
             "WhatsApp": pin.whatsapp,
-            "Status Kemitraan": pin.partnershipStatus || 'AGENT', // Export Partnership Status
+            "Status Kemitraan": pin.partnershipStatus || 'AGENT',
             "Jam Operasional": pin.operatingHours,
             "Status": pin.status
         }));
@@ -227,7 +228,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Data Lokasi");
         
-        // Auto-width columns
         const max_width = dataToExport.reduce((w, r) => Math.max(w, r["Nama Lokasi"]?.length || 10), 10);
         worksheet["!cols"] = [ { wch: max_width } ];
 
@@ -261,20 +261,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
             let successCount = 0;
 
             for (const row of jsonData as any[]) {
-                // Mapping kolom Excel ke PinLocation (Flexible)
-                // Mendukung berbagai penamaan kolom umum
                 const name = row['Nama Lokasi'] || row['name'] || row['Name'];
                 const lat = row['Latitude'] || row['lat'] || row['Lat'];
                 const lng = row['Longitude'] || row['lng'] || row['Lng'];
 
                 if (name && !isNaN(parseFloat(lat)) && !isNaN(parseFloat(lng))) {
-                     // Parse category
                      let cat = row['Kategori'] || row['category'];
                      if (!Object.values(LocationCategory).includes(cat)) {
                          cat = LocationCategory.DROP_POINT; // Default
                      }
 
-                     // Parse Partnership Status
                      let pStatus = row['Status Kemitraan'] || row['partnershipStatus'] || 'AGENT';
                      if (pStatus !== 'AGENT' && pStatus !== 'MITRA') pStatus = 'AGENT';
 
@@ -289,11 +285,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                          phone: String(row['Telepon'] || row['phone'] || ''),
                          ownerName: String(row['Pemilik'] || row['ownerName'] || ''),
                          whatsapp: String(row['WhatsApp'] || row['whatsapp'] || ''),
-                         partnershipStatus: pStatus, // Mapped
+                         partnershipStatus: pStatus,
                          operatingHours: String(row['Jam Operasional'] || row['operatingHours'] || ''),
                          status: (row['Status'] === 'Tutup' || row['status'] === 'Tutup') ? 'Tutup' : 'Buka',
                          createdAt: new Date().toISOString(),
-                         imageUrl: undefined // Excel import doesn't support images easily
+                         imageUrl: undefined
                      });
                      successCount++;
                 }
@@ -331,7 +327,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     setPhone(pin.phone || ''); 
     setOwnerName(pin.ownerName || ''); 
     setWhatsapp(pin.whatsapp || ''); 
-    setPartnershipStatus(pin.partnershipStatus || 'AGENT'); // Set partnership status
+    setPartnershipStatus(pin.partnershipStatus || 'AGENT'); 
     setOperatingHours(pin.operatingHours || ''); 
     setStatus(pin.status || 'Buka'); 
     setSelectedCoord({ lat: pin.lat, lng: pin.lng }); 
@@ -349,7 +345,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     setPhone(''); 
     setOwnerName(''); 
     setWhatsapp(''); 
-    setPartnershipStatus('AGENT'); // Reset to default
+    setPartnershipStatus('AGENT'); 
     setOperatingHours(''); 
     setStatus('Buka'); 
     setSelectedCoord(null); 
@@ -370,7 +366,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       if (latNum < -90 || latNum > 90) errors.push("• Latitude tidak valid.");
       if (lngNum < -180 || lngNum > 180) errors.push("• Longitude tidak valid.");
     }
-    // Validation for email removed as field is removed
     if (!description.trim()) errors.push("• Deskripsi wajib diisi.");
     if (errors.length > 0) { showToast("Mohon perbaiki kesalahan:\n" + errors.join("\n"), "error"); return; }
     setIsSaving(true);
@@ -384,7 +379,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         phone: phone.trim(), 
         ownerName: ownerName.trim(), 
         whatsapp: whatsapp.trim(), 
-        partnershipStatus: partnershipStatus, // Use status
+        partnershipStatus: partnershipStatus, 
         imageUrl: imageUrl.trim() || undefined, 
         operatingHours: operatingHours.trim(), 
         status, 
@@ -402,26 +397,65 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     finally { setIsSaving(false); }
   };
 
+  // Single Delete
   const handleDelete = (id: string) => {
     setPinToDelete(id);
     setShowDeleteModal(true);
   };
   
+  // Bulk Selection Logic
+  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.checked) {
+        setSelectedIds(tablePins.map(p => p.id));
+    } else {
+        setSelectedIds([]);
+    }
+  };
+
+  const handleSelectRow = (id: string) => {
+    if (selectedIds.includes(id)) {
+        setSelectedIds(selectedIds.filter(sid => sid !== id));
+    } else {
+        setSelectedIds([...selectedIds, id]);
+    }
+  };
+
+  const handleBulkDelete = () => {
+    setPinToDelete(null); // Ensure not single delete mode
+    setShowDeleteModal(true);
+  };
+
   const confirmDelete = async () => {
-    if(pinToDelete){
+    // Bulk Delete
+    if (selectedIds.length > 0 && !pinToDelete) {
+        try {
+            await Promise.all(selectedIds.map(id => deletePin(id)));
+            showToast(`Berhasil menghapus ${selectedIds.length} lokasi.`);
+            setSelectedIds([]); // Reset selection
+        } catch (error) {
+            console.error("Bulk delete error:", error);
+            showToast("Gagal menghapus beberapa data.", "error");
+        }
+    } 
+    // Single Delete
+    else if (pinToDelete) {
         await deletePin(pinToDelete);
-        await refreshData();
         showToast("Lokasi berhasil dihapus.");
         if (editingId === pinToDelete) resetForm();
     }
+    
+    await refreshData();
     setPinToDelete(null);
   };
 
   const confirmLogout = () => {
-    onLogout(); // This will trigger supabase.auth.signOut() in App.tsx
+    onLogout(); 
   }
 
   const tablePins = pins.filter(p => p.name.toLowerCase().includes(tableSearch.toLowerCase()) || p.address?.toLowerCase().includes(tableSearch.toLowerCase()) || p.category.toLowerCase().includes(tableSearch.toLowerCase()));
+
+  const isAllSelected = tablePins.length > 0 && selectedIds.length === tablePins.length;
+  const isBulkDeleteMode = selectedIds.length > 0 && !pinToDelete;
 
   return (
     <>
@@ -447,8 +481,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         isOpen={showDeleteModal}
         onClose={() => setShowDeleteModal(false)}
         onConfirm={confirmDelete}
-        title="Hapus Lokasi"
-        message="Anda yakin ingin menghapus lokasi ini secara permanen? Aksi ini tidak dapat dibatalkan."
+        title={isBulkDeleteMode ? `Hapus ${selectedIds.length} Lokasi?` : "Hapus Lokasi"}
+        message={isBulkDeleteMode 
+            ? `Anda yakin ingin menghapus ${selectedIds.length} lokasi yang ditandai? Aksi ini tidak dapat dibatalkan.` 
+            : "Anda yakin ingin menghapus lokasi ini secara permanen? Aksi ini tidak dapat dibatalkan."}
         type="danger"
         confirmText="Ya, Hapus"
         cancelText="Batal"
@@ -504,7 +540,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                       <div><label className="block text-xs font-medium text-slate-600 mb-1.5">No. Telepon</label><input type="text" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-transparent" placeholder="021-xxxx" /></div>
                       <div><label className="block text-xs font-medium text-slate-600 mb-1.5">WhatsApp</label><input type="text" value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-transparent" placeholder="0812xxxx" /></div>
                   </div>
-                   {/* REPLACED EMAIL INPUT WITH PARTNERSHIP STATUS DROPDOWN */}
                    <div>
                        <label className="block text-xs font-medium text-slate-600 mb-1.5">Status Kemitraan</label>
                        <select value={partnershipStatus} onChange={(e) => setPartnershipStatus(e.target.value as 'AGENT' | 'MITRA')} className={`w-full px-3 py-2 border border-slate-300 rounded-lg text-sm font-bold ${partnershipStatus === 'AGENT' ? 'text-cyan-700 bg-cyan-50' : 'text-amber-700 bg-amber-50'}`}>
@@ -542,16 +577,68 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
           </div>
           <div className="flex-1 bg-slate-50 flex flex-col min-h-0">
              <div className="px-5 py-3 bg-white border-b border-slate-200 flex justify-between items-center">
-                <div className="flex items-center gap-2"><LayoutList className="w-4 h-4 text-indigo-600" /><h3 className="text-sm font-bold text-slate-800">Daftar Lokasi ({pins.length})</h3></div>
-                <div className="relative w-64"><Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" /><input type="text" placeholder="Cari lokasi..." value={tableSearch} onChange={(e) => setTableSearch(e.target.value)} className="w-full pl-8 pr-3 py-1.5 text-xs border border-slate-300 rounded-md focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 bg-white" /></div>
+                <div className="flex items-center gap-2">
+                    <LayoutList className="w-4 h-4 text-indigo-600" />
+                    <h3 className="text-sm font-bold text-slate-800">
+                        {selectedIds.length > 0 ? (
+                            <span className="text-indigo-600">{selectedIds.length} Dipilih</span>
+                        ) : (
+                            `Daftar Lokasi (${pins.length})`
+                        )}
+                    </h3>
+                </div>
+                <div className="flex items-center gap-3">
+                    {selectedIds.length > 0 && (
+                        <button 
+                            onClick={handleBulkDelete}
+                            className="flex items-center gap-1 px-3 py-1.5 bg-rose-50 text-rose-600 rounded-md text-xs font-bold hover:bg-rose-100 transition-colors animate-fade-in-up"
+                        >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            Hapus ({selectedIds.length})
+                        </button>
+                    )}
+                    <div className="relative w-64">
+                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                        <input type="text" placeholder="Cari lokasi..." value={tableSearch} onChange={(e) => setTableSearch(e.target.value)} className="w-full pl-8 pr-3 py-1.5 text-xs border border-slate-300 rounded-md focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 bg-white" />
+                    </div>
+                </div>
              </div>
              <div className="flex-1 overflow-auto">
                 <table className="w-full text-left border-collapse">
-                   <thead className="bg-slate-50 sticky top-0 z-10 shadow-sm"><tr><th className="px-5 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200">No</th><th className="px-5 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200">Nama Lokasi</th><th className="px-5 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200">Kategori</th><th className="px-5 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200">Alamat</th><th className="px-5 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200">Status Kemitraan</th><th className="px-5 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200 text-right">Aksi</th></tr></thead>
+                   <thead className="bg-slate-50 sticky top-0 z-10 shadow-sm">
+                       <tr>
+                           <th className="px-5 py-3 border-b border-slate-200 w-10">
+                               <div className="flex items-center justify-center">
+                                    <input 
+                                        type="checkbox" 
+                                        checked={isAllSelected}
+                                        onChange={handleSelectAll}
+                                        className="w-4 h-4 text-indigo-600 bg-white border-slate-300 rounded focus:ring-indigo-500"
+                                    />
+                               </div>
+                           </th>
+                           <th className="px-5 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200">No</th>
+                           <th className="px-5 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200">Nama Lokasi</th>
+                           <th className="px-5 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200">Kategori</th>
+                           <th className="px-5 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200">Alamat</th>
+                           <th className="px-5 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200">Status Kemitraan</th>
+                           <th className="px-5 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200 text-right">Aksi</th>
+                       </tr>
+                   </thead>
                    <tbody className="bg-white divide-y divide-slate-100">
-                      {tablePins.length === 0 ? (<tr><td colSpan={6} className="px-5 py-8 text-center text-slate-400 text-sm italic">Tidak ada data lokasi yang ditemukan.</td></tr>) : (
+                      {tablePins.length === 0 ? (<tr><td colSpan={7} className="px-5 py-8 text-center text-slate-400 text-sm italic">Tidak ada data lokasi yang ditemukan.</td></tr>) : (
                          tablePins.map((pin, index) => (
-                            <tr key={pin.id} className={`hover:bg-slate-50 transition-colors group ${editingId === pin.id ? 'bg-indigo-50/60' : ''}`}>
+                            <tr key={pin.id} className={`hover:bg-slate-50 transition-colors group ${editingId === pin.id ? 'bg-indigo-50/60' : ''} ${selectedIds.includes(pin.id) ? 'bg-indigo-50/30' : ''}`}>
+                               <td className="px-5 py-3 w-10">
+                                   <div className="flex items-center justify-center">
+                                        <input 
+                                            type="checkbox" 
+                                            checked={selectedIds.includes(pin.id)}
+                                            onChange={() => handleSelectRow(pin.id)}
+                                            className="w-4 h-4 text-indigo-600 bg-white border-slate-300 rounded focus:ring-indigo-500"
+                                        />
+                                   </div>
+                               </td>
                                <td className="px-5 py-3 text-xs text-slate-500 w-12">{index + 1}</td>
                                <td className="px-5 py-3"><div className="flex items-center gap-3"><div className={`w-8 h-8 rounded-lg flex items-center justify-center text-lg bg-slate-100 border border-slate-200`}>{CATEGORY_ICONS[pin.category]}</div><div><div className="text-xs font-bold text-slate-700">{pin.name}</div><div className="text-[10px] text-slate-400 font-mono">{pin.lat.toFixed(4)}, {pin.lng.toFixed(4)}</div></div></div></td>
                                <td className="px-5 py-3"><span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-600 border border-slate-200">{pin.category}</span></td>
