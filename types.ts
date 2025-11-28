@@ -18,7 +18,7 @@ export interface PinLocation {
   address?: string;
   phone?: string; // Digunakan sebagai No HP/Telepon utama
   ownerName?: string;
-  email?: string;
+  partnershipStatus?: 'AGENT' | 'MITRA'; // Replaces email
   whatsapp?: string;
   operatingHours?: string;
   status?: OperationStatus;
