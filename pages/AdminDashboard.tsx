@@ -212,8 +212,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
         const dataToExport = pins.map(pin => ({
             "Nama Lokasi": pin.name,
             "Kategori": pin.category,
-            "Latitude": pin.lat,
-            "Longitude": pin.lng,
+            // PENTING: Konversi koordinat ke STRING agar Excel tidak mengubah titik jadi koma
+            "Latitude": String(pin.lat).replace(',', '.'), 
+            "Longitude": String(pin.lng).replace(',', '.'),
             "Deskripsi": pin.description,
             "Alamat": pin.address,
             "Telepon": pin.phone,
@@ -260,35 +261,31 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
             const newPins: PinLocation[] = [];
             let successCount = 0;
 
-            // 👇 FUNGSI BARU: PEMBERSIH KOORDINAT CERDAS 👇
-             const cleanCoordinate = (val: any, type: 'lat' | 'lng'): number => {
+            // 👇 FUNGSI BARU: PEMBERSIH KOORDINAT CERDAS (REVISI) 👇
+            const cleanCoordinate = (val: any, type: 'lat' | 'lng'): number => {
                 // Handle null/undefined
                 if (val === null || val === undefined || val === '') return 0;
 
+                let str = String(val).trim();
                 let num: number;
 
-                // 1. JIKA INPUT SUDAH ANGKA (Misal dari Excel terbaca 2572531)
-                if (typeof val === 'number') {
-                    num = val;
+                // LOGIKA KHUSUS: Mendeteksi format banyak titik (2.572.531)
+                // Jika titiknya lebih dari satu, ini pasti format ribuan yang salah
+                const dotCount = (str.match(/\./g) || []).length;
+                
+                if (dotCount > 1) {
+                    // Hapus SEMUA titik, jadikan integer murni
+                    // 2.572.531 -> 2572531
+                    str = str.replace(/\./g, '');
                 } 
-                // 2. JIKA INPUT ADALAH TEXT (Misal "2.572.531" atau "2,57")
-                else {
-                    let str = String(val).trim();
-                    
-                    // Ganti koma jadi titik
-                    str = str.replace(/,/g, '.');
+                
+                // Ganti koma jadi titik (jika user pakai format Indo 2,5)
+                str = str.replace(/,/g, '.');
 
-                    // Cek multiple dots (Kasus: 2.572.531)
-                    // Ambil angka sebelum titik pertama sebagai integer, sisanya desimal
-                    const parts = str.split('.');
-                    if (parts.length > 2) {
-                        str = parts[0] + '.' + parts.slice(1).join('');
-                    }
+                // Bersihkan karakter aneh selain angka, titik, dan minus
+                str = str.replace(/[^0-9.-]/g, '');
 
-                    // Bersihkan karakter aneh
-                    str = str.replace(/[^0-9.-]/g, '');
-                    num = parseFloat(str);
-                }
+                num = parseFloat(str);
 
                 if (isNaN(num)) return 0;
 
@@ -297,7 +294,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                 // Jika angkanya 2572531 (2 juta), akan dibagi 10 terus sampai jadi 2.572531
                 const limit = type === 'lat' ? 90 : 180;
                 
-                // Safety: cegah infinite loop jika angka infinity
+                // Safety: cegah infinite loop
                 if (!isFinite(num)) return 0;
 
                 while (Math.abs(num) > limit) {
