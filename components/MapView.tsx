@@ -1,9 +1,10 @@
+
 import React, { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents, ZoomControl, AttributionControl, useMap, Polyline, Tooltip } from 'react-leaflet';
 import L from 'leaflet';
 import { PinLocation, LocationCategory, OperationStatus, LocationReport } from '../types';
 import { CATEGORY_ICONS, CATEGORY_COLORS, DEFAULT_CENTER, DEFAULT_ZOOM } from '../constants';
-import { MapPin, Navigation, ExternalLink, User, MessageCircle, Clock, ArrowRight, Network, Flag, Send, X, Edit2, Loader2, CheckCircle, Phone } from 'lucide-react';
+import { MapPin, Navigation, ExternalLink, User, MessageCircle, Clock, ArrowRight, Network, Flag, Send, X, Edit2, Loader2, CheckCircle, Phone, Briefcase } from 'lucide-react';
 import { addReport } from '../services/storageService'; // Now an async function
 
 // --- KONFIGURASI ICON PIN ALA GOOGLE MAPS ---
@@ -370,9 +371,21 @@ const MapView: React.FC<MapViewProps> = ({ pins, onMapClick, selectedLocation, f
 
                    {/* Floating Badges */}
                    <div className="absolute top-3 left-3 right-3 flex justify-between items-start z-10">
-                     <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide shadow-sm border ${getPastelCategoryStyle(pin.category)} bg-opacity-95 backdrop-blur-sm`}>
-                       <span>{CATEGORY_ICONS[pin.category]}</span>{pin.category}
-                     </span>
+                     <div className="flex flex-col items-start gap-1">
+                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide shadow-sm border ${getPastelCategoryStyle(pin.category)} bg-opacity-95 backdrop-blur-sm`}>
+                            <span>{CATEGORY_ICONS[pin.category]}</span>{pin.category}
+                        </span>
+                        {/* PARTNERSHIP STATUS BADGE (Replaces Email) */}
+                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide shadow-sm border bg-opacity-95 backdrop-blur-sm ${
+                            pin.partnershipStatus === 'MITRA' 
+                            ? 'bg-amber-50 text-amber-700 border-amber-200' 
+                            : 'bg-cyan-50 text-cyan-700 border-cyan-200'
+                        }`}>
+                            <Briefcase className="w-3 h-3"/>
+                            {pin.partnershipStatus || 'AGENT'}
+                        </span>
+                     </div>
+                     
                      {pin.status && (
                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide shadow-sm border ${pin.status === 'Buka' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-rose-50 text-rose-600 border-rose-100'}`}>
                          <div className={`w-1.5 h-1.5 rounded-full ${pin.status === 'Buka' ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></div>
@@ -435,7 +448,7 @@ const MapView: React.FC<MapViewProps> = ({ pins, onMapClick, selectedLocation, f
                     {/* Action Buttons (Modern Soft UI) */}
                     <div className="grid grid-cols-4 gap-2">
                       <a href={`https://www.google.com/maps/dir/?api=1&destination=${pin.lat},${pin.lng}`} target="_blank" rel="noopener noreferrer" 
-                         className="col-span-2 flex items-center justify-center gap-2 bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-bold py-2.5 px-3 rounded-xl transition-all shadow-md shadow-indigo-100 active:scale-95 group">
+                         className="col-span-2 flex items-center justify-center gap-2 bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-extrabold py-2.5 px-3 rounded-xl transition-all shadow-md shadow-indigo-100 active:scale-95 group">
                          <Navigation className="w-4 h-4 group-hover:-rotate-45 transition-transform" />
                          Rute
                       </a>
