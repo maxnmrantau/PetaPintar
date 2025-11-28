@@ -2,7 +2,8 @@
 export enum LocationCategory {
   DROP_POINT = 'Drop Point',
   TRANSIT_CENTER = 'Transit Center',
-  GATEWAY = 'Gateway'
+  GATEWAY = 'Gateway',
+  MINI_DROP_POINT = 'Mini Drop Point'
 }
 
 export type OperationStatus = 'Buka' | 'Tutup';
