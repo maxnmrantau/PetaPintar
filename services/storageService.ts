@@ -16,7 +16,7 @@ const toDbLocation = (pin: PinLocation) => ({
   address: pin.address,
   phone: pin.phone,
   owner_name: pin.ownerName,       // Mapping: ownerName -> owner_name
-  email: pin.email,
+  partnership_status: pin.partnershipStatus, // Mapping: partnershipStatus -> partnership_status (Replaces email)
   whatsapp: pin.whatsapp,
   operating_hours: pin.operatingHours, // Mapping: operatingHours -> operating_hours
   status: pin.status,
@@ -35,7 +35,7 @@ const fromDbLocation = (dbPin: any): PinLocation => ({
   address: dbPin.address,
   phone: dbPin.phone,
   ownerName: dbPin.owner_name,     // Mapping balik
-  email: dbPin.email,
+  partnershipStatus: dbPin.partnership_status || 'AGENT', // Mapping balik (Default to AGENT if null)
   whatsapp: dbPin.whatsapp,
   operatingHours: dbPin.operating_hours, // Mapping balik
   status: dbPin.status,
