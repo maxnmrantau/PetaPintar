@@ -122,7 +122,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const [pinToDelete, setPinToDelete] = useState<string | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const csvInputRef = useRef<HTMLInputElement>(null);
+  const excelInputRef = useRef<HTMLInputElement>(null);
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     setNotification({ show: true, message, type });
@@ -197,64 +197,122 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     }
   };
 
-  const handleExportCSV = () => {
-    const headers = ["id", "name", "category", "lat", "lng", "description", "address", "phone", "ownerName", "email", "whatsapp", "operatingHours", "status", "createdAt", "imageUrl"];
-    const rows = pins.map(pin => [
-        `"${pin.id}"`, `"${pin.name.replace(/"/g, '""')}"`, pin.category, pin.lat, pin.lng, `"${(pin.description || '').replace(/"/g, '""')}"`, `"${(pin.address || '').replace(/"/g, '""')}"`, `"${(pin.phone || '').replace(/"/g, '""')}"`, `"${(pin.ownerName || '').replace(/"/g, '""')}"`, `"${(pin.email || '').replace(/"/g, '""')}"`, `"${(pin.whatsapp || '').replace(/"/g, '""')}"`, `"${(pin.operatingHours || '').replace(/"/g, '""')}"`, pin.status, pin.createdAt, `"${(pin.imageUrl || '').replace(/"/g, '""')}"`
-    ]);
-    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-    const blob = new Blob(["\ufeff" + csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `Data_Lokasi_PetaPintar_${new Date().toISOString().slice(0,10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const handleExportExcel = () => {
+    try {
+        const XLSX = (window as any).XLSX;
+        if (!XLSX) {
+            showToast("Library Excel belum dimuat.", "error");
+            return;
+        }
+
+        // Siapkan data untuk Excel
+        const dataToExport = pins.map(pin => ({
+            "Nama Lokasi": pin.name,
+            "Kategori": pin.category,
+            "Latitude": pin.lat,
+            "Longitude": pin.lng,
+            "Deskripsi": pin.description,
+            "Alamat": pin.address,
+            "Telepon": pin.phone,
+            "Pemilik": pin.ownerName,
+            "WhatsApp": pin.whatsapp,
+            "Email": pin.email,
+            "Jam Operasional": pin.operatingHours,
+            "Status": pin.status
+        }));
+
+        const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Data Lokasi");
+        
+        // Auto-width columns
+        const max_width = dataToExport.reduce((w, r) => Math.max(w, r["Nama Lokasi"]?.length || 10), 10);
+        worksheet["!cols"] = [ { wch: max_width } ];
+
+        XLSX.writeFile(workbook, `Data_PetaPintar_${new Date().toISOString().slice(0,10)}.xlsx`);
+        showToast("File Excel berhasil diunduh!");
+    } catch (error) {
+        console.error("Export Error:", error);
+        showToast("Gagal mengexport Excel.", "error");
+    }
   };
 
-  const handleCSVImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleExcelImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]; if (!file) return;
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      const text = event.target?.result as string; if (!text) return;
-      try {
-        const rows = text.split('\n');
-        const headers = rows[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
-        const newPins: PinLocation[] = []; let successCount = 0;
-
-        for (let i = 1; i < rows.length; i++) {
-          const row = rows[i].trim(); if (!row) continue;
-          const matches = row.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
-          const cols = matches ? matches.map(m => m.replace(/^"|"$/g, '').replace(/""/g, '"')) : row.split(',');
-          
-          if (cols.length >= headers.length) {
-             const pinData: Partial<PinLocation> = {};
-             headers.forEach((header, index) => {
-                const value = cols[index];
-                if (value) {
-                    if (['lat', 'lng'].includes(header)) (pinData as any)[header] = parseFloat(value);
-                    else if (header === 'category') pinData.category = Object.values(LocationCategory).includes(value as LocationCategory) ? value as LocationCategory : LocationCategory.DROP_POINT;
-                    else (pinData as any)[header] = value;
-                }
-             });
-
-            if (pinData.name && !isNaN(pinData.lat!) && !isNaN(pinData.lng!)) {
-                newPins.push({ id: pinData.id || Date.now().toString() + Math.random().toString(36).substr(2, 9), name: pinData.name, category: pinData.category || LocationCategory.DROP_POINT, lat: pinData.lat!, lng: pinData.lng!, description: pinData.description || '', address: pinData.address || '', phone: pinData.phone || '', ownerName: pinData.ownerName || '', email: pinData.email || '', whatsapp: pinData.whatsapp || '', operatingHours: pinData.operatingHours || '', status: pinData.status || 'Buka', createdAt: pinData.createdAt || new Date().toISOString(), imageUrl: pinData.imageUrl || undefined });
-                successCount++;
-            }
-          }
+    
+    try {
+        const XLSX = (window as any).XLSX;
+        if (!XLSX) {
+            showToast("Library Excel belum dimuat.", "error");
+            return;
         }
-        if (newPins.length > 0) { await importPins(newPins); await refreshData(); showToast(`Berhasil mengimpor ${successCount} lokasi baru!`); }
-        else { showToast("Tidak ada data valid yang ditemukan.", "error"); }
-      } catch (err) { console.error(err); showToast("Gagal membaca file CSV.", "error"); }
-      if (csvInputRef.current) csvInputRef.current.value = '';
-    };
-    reader.readAsText(file);
+
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            const data = new Uint8Array(e.target?.result as ArrayBuffer);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const firstSheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[firstSheetName];
+            const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+            const newPins: PinLocation[] = [];
+            let successCount = 0;
+
+            for (const row of jsonData as any[]) {
+                // Mapping kolom Excel ke PinLocation (Flexible)
+                // Mendukung berbagai penamaan kolom umum
+                const name = row['Nama Lokasi'] || row['name'] || row['Name'];
+                const lat = row['Latitude'] || row['lat'] || row['Lat'];
+                const lng = row['Longitude'] || row['lng'] || row['Lng'];
+
+                if (name && !isNaN(parseFloat(lat)) && !isNaN(parseFloat(lng))) {
+                     // Parse category
+                     let cat = row['Kategori'] || row['category'];
+                     if (!Object.values(LocationCategory).includes(cat)) {
+                         cat = LocationCategory.DROP_POINT; // Default
+                     }
+
+                     newPins.push({
+                         id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+                         name: String(name),
+                         category: cat,
+                         lat: parseFloat(lat),
+                         lng: parseFloat(lng),
+                         description: String(row['Deskripsi'] || row['description'] || ''),
+                         address: String(row['Alamat'] || row['address'] || ''),
+                         phone: String(row['Telepon'] || row['phone'] || ''),
+                         ownerName: String(row['Pemilik'] || row['ownerName'] || ''),
+                         whatsapp: String(row['WhatsApp'] || row['whatsapp'] || ''),
+                         email: String(row['Email'] || row['email'] || ''),
+                         operatingHours: String(row['Jam Operasional'] || row['operatingHours'] || ''),
+                         status: (row['Status'] === 'Tutup' || row['status'] === 'Tutup') ? 'Tutup' : 'Buka',
+                         createdAt: new Date().toISOString(),
+                         imageUrl: undefined // Excel import doesn't support images easily
+                     });
+                     successCount++;
+                }
+            }
+
+            if (newPins.length > 0) { 
+                await importPins(newPins); 
+                await refreshData(); 
+                showToast(`Berhasil mengimpor ${successCount} lokasi dari Excel!`); 
+            } else { 
+                showToast("Tidak ada data valid yang ditemukan dalam file Excel.", "error"); 
+            }
+        };
+        reader.readAsArrayBuffer(file);
+
+    } catch (err) { 
+        console.error(err); 
+        showToast("Gagal membaca file Excel.", "error"); 
+    }
+    
+    if (excelInputRef.current) excelInputRef.current.value = '';
   };
 
   const triggerFileInput = () => fileInputRef.current?.click();
-  const triggerCSVInput = () => csvInputRef.current?.click();
+  const triggerExcelInput = () => excelInputRef.current?.click();
 
   const handleEdit = (pin: PinLocation) => {
     setEditingId(pin.id); setEditingCreatedAt(pin.createdAt); setName(pin.name); setCategory(pin.category); setDescription(pin.description); setAddress(pin.address || ''); setImageUrl(pin.imageUrl || ''); setPhone(pin.phone || ''); setOwnerName(pin.ownerName || ''); setWhatsapp(pin.whatsapp || ''); setEmail(pin.email || ''); setOperatingHours(pin.operatingHours || ''); setStatus(pin.status || 'Buka'); setSelectedCoord({ lat: pin.lat, lng: pin.lng }); setLatInput(pin.lat.toString()); setLngInput(pin.lng.toString());
@@ -414,9 +472,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                 <div className="bg-white/90 backdrop-blur rounded-lg shadow-lg border border-slate-200 p-2 flex flex-col gap-2">
                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-1">Import / Export</div>
                    <div className="flex gap-2">
-                      <button onClick={triggerCSVInput} className="flex items-center gap-2 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-xs font-bold transition-colors shadow-sm"><FileSpreadsheet className="w-3.5 h-3.5" />Import CSV</button>
-                      <input type="file" ref={csvInputRef} className="hidden" accept=".csv" onChange={handleCSVImport} />
-                      <button onClick={handleExportCSV} className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-xs font-bold transition-colors shadow-sm"><Download className="w-3.5 h-3.5" />Export Excel</button>
+                      <button onClick={triggerExcelInput} className="flex items-center gap-2 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-xs font-bold transition-colors shadow-sm"><FileSpreadsheet className="w-3.5 h-3.5" />Import Excel</button>
+                      <input type="file" ref={excelInputRef} className="hidden" accept=".xlsx, .xls" onChange={handleExcelImport} />
+                      <button onClick={handleExportExcel} className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-xs font-bold transition-colors shadow-sm"><Download className="w-3.5 h-3.5" />Export Excel</button>
                    </div>
                 </div>
              </div>
